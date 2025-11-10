@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal spending management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.15.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-gray-50">
+
+    <main class="container bg-gray-50 mx-auto mt-[100px] max-w-3xl p-4">
+        <div class="bg-white rounded-2xl shadow-lg p-5" x-data="app()" x-init="init()">
+            <h1 class="text-xl text-center uppercase font-semibold mb-4">Personal spending management</h1>
+            <section class="border border-gray-200 rounded-xl p-3 mb-4 flex justify-between gap-3">
+                <div><span class="font-semibold">Total amount: </span><span x-text="fmt(balance())"></span></div>
+                <div><span class="font-semibold">Total revenue: </span><span x-text="fmt(sum('income'))"></span></div>
+                <div><span class="font-semibold">Total expenditure: </span><span x-text="fmt(sum('expense'))"></span></div>
+            </section>
+            <section class="border boder-gray-200 rounded-xl p-3 mb-4 flex flex-wrap gap-3">
+
+                <select x-model="form.type" name="" id="" class="px-3 py-2 border border-gray-300 rounded-lg">
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                </select>
+                <input type="number" min="0" step="1000" placeholder="Amount" x-model.number="form.amount"
+                    class="px-3 py-2 border border-gray-300 rounded-lg flex-1 min-w-[200px]" />
+                <input type="text" x-model="form.note" placeholder="Note"
+                    class="px-3 py-2 border border-gray-300 rounded-lg flex-1 min-w-[200px]" />
+                <button @click="add()" class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Add</button>
+
+            </section>
+            <section class="border border-gray-200 rounded-xl p-3 mb-4 flex gap-10">
+                <h5 class="pr-5 font-semibold">Filter: </h5>
+                <label for="" class="flex items-center gap-2">
+                    <input type="radio" value="all" x-model="filter"> All
+                </label>
+                <label for="" class="flex items-center gap-2">
+                    <input type="radio" value="income" x-model="filter"> Income
+                </label>
+                <label for="" class="flex items-center gap-2">
+                    <input type="radio" value="expense" x-model="filter"> Expense
+                </label>
+            </section>
+            <section class="border border-gray-200 rounded-xl p-3 mb-4">
+                <template x-if="filtered().length === 0">
+                    <div class="text-sm text-gray-500">no transactions yet.</div>
+                </template>
+                <ul class="list-none p-0 m-0 space-y-0">
+                    <template x-for="t in filtered()" :key="t.id">
+                        <li class="flex items-center gap-3 py-3 border-b border-gray-200 last:border-b-0">
+                            <span class="text-xs px-2 py-1 rounded-full"
+                                :class="t.type==='income' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'"
+                                x-text="t.type==='income' ? 'INC' : 'EXP'"></span>
+
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate"
+                                    x-text="t.note || (t.type==='income' ? 'Khoản thu' : 'Khoản chi')"></div>
+                            </div>
+
+                            <div class="text-right min-w-[140px]"
+                                :class="t.type==='income' ? 'text-emerald-700' : 'text-rose-700'">
+                                <b x-text="(t.type==='income' ? '+' : '-') + fmt(t.amount)"></b>
+                            </div>
+
+                            <button @click="del(t.id)" title="Xóa"
+                                class="text-xs text-black rounded-2xl hover:text-rose-600 hover:bg-red-100 px-2 py-1 bg-red-300 ">
+                                Delete
+                            </button>
+                        </li>
+                    </template>
+                </ul>
+            </section>
+        </div>
+    </main>
+    <script>
+        function app() {
+            return {
+                items: [],
+                filter: 'all',
+                form: { type: 'expense', amount: 0, note: '' },
+                init() {
+                    try {
+                        const raw = localStorage.getItem('spending-app-data');
+                        this.items = JSON.parse(raw) || [];
+                    }
+                    catch { }
+                    this.$watch('items', () => {
+                        localStorage.setItem('spending-app-data', JSON.stringify(this.items));
+                    })
+                },
+                add() {
+                    const a = Number(this.form.amount);
+                    if (!a || a < 0) return alert('Please enter a valid amount!');
+                    this.items.unshift({
+                        id: Date.now(),
+                        type: this.form.type,
+                        amount: Math.round(a),
+                        note: (this.form.note || '').trim(),
+
+                    })
+                    this.form = { type: 'expense', amount: null, note: '' };
+                },
+                del(id) {
+                    this.items = this.items.filter(i => i.id !== id);
+                },
+                filtered() {
+                    if (this.filter == 'all') return this.items;
+                    return this.items.filter(i => i.type === this.filter);
+                },
+                sum(type) { return this.items.filter(i => i.type === type).reduce((s, i) => s + (i.amount || 0), 0); },
+                balance() { return this.sum('income') - this.sum('expense') },
+                fmt(n) { return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' }); },
+
+            }
+        }
+    </script>
+
+</body>
+
+</html>
